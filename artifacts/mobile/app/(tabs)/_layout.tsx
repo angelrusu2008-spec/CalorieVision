@@ -14,15 +14,15 @@ function NativeTabLayout() {
     <NativeTabs>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>Today</Label>
+        <Label>Hoy</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="scan">
         <Icon sf={{ default: "camera", selected: "camera.fill" }} />
-        <Label>Scan</Label>
+        <Label>Escanear</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="history">
         <Icon sf={{ default: "clock", selected: "clock.fill" }} />
-        <Label>History</Label>
+        <Label>Historial</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -69,7 +69,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Today",
+          title: "Hoy",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="house" tintColor={color} size={24} />
@@ -81,7 +81,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="scan"
         options={{
-          title: "Scan",
+          title: "Escanear",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="camera" tintColor={color} size={24} />
@@ -93,7 +93,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: "History",
+          title: "Historial",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="clock" tintColor={color} size={24} />

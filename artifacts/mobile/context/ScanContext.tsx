@@ -10,10 +10,10 @@ import React, {
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 
 export const MEAL_LABELS: Record<MealType, string> = {
-  breakfast: "Breakfast",
-  lunch: "Lunch",
-  dinner: "Dinner",
-  snack: "Snack",
+  breakfast: "Desayuno",
+  lunch: "Almuerzo",
+  dinner: "Cena",
+  snack: "Merienda",
 };
 
 export interface NutritionData {
@@ -60,6 +60,7 @@ interface ScanContextType {
   clearHistory: () => void;
   isLoading: boolean;
   dailyGoals: DailyGoals;
+  updateGoals: (goals: DailyGoals) => void;
   pendingMealType: MealType;
   setPendingMealType: (meal: MealType) => void;
   getTodayRecords: () => ScanRecord[];
@@ -70,6 +71,7 @@ interface ScanContextType {
 const ScanContext = createContext<ScanContextType | null>(null);
 
 const STORAGE_KEY = "calorie_scan_history_v2";
+const GOALS_KEY = "calorie_scan_goals_v1";
 
 function todayDateString() {
   return new Date().toISOString().split("T")[0] ?? "";
@@ -86,17 +88,23 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
   const [history, setHistory] = useState<ScanRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingMealType, setPendingMealType] = useState<MealType>("breakfast");
+  const [dailyGoals, setDailyGoals] = useState<DailyGoals>(DEFAULT_GOALS);
 
   useEffect(() => {
-    void loadHistory();
+    void loadData();
   }, []);
 
-  async function loadHistory() {
+  async function loadData() {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as ScanRecord[];
-        setHistory(parsed);
+      const [rawHistory, rawGoals] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEY),
+        AsyncStorage.getItem(GOALS_KEY),
+      ]);
+      if (rawHistory) {
+        setHistory(JSON.parse(rawHistory) as ScanRecord[]);
+      }
+      if (rawGoals) {
+        setDailyGoals(JSON.parse(rawGoals) as DailyGoals);
       }
     } catch {
     } finally {
@@ -115,6 +123,11 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
   const clearHistory = useCallback(() => {
     setHistory([]);
     void AsyncStorage.removeItem(STORAGE_KEY);
+  }, []);
+
+  const updateGoals = useCallback((goals: DailyGoals) => {
+    setDailyGoals(goals);
+    void AsyncStorage.setItem(GOALS_KEY, JSON.stringify(goals));
   }, []);
 
   const getTodayRecords = useCallback(() => {
@@ -152,7 +165,8 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
         addScan,
         clearHistory,
         isLoading,
-        dailyGoals: DEFAULT_GOALS,
+        dailyGoals,
+        updateGoals,
         pendingMealType,
         setPendingMealType,
         getTodayRecords,

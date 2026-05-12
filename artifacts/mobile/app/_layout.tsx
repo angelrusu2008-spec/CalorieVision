@@ -28,6 +28,10 @@ function RootLayoutNav() {
         name="result"
         options={{ headerShown: false, presentation: "card" }}
       />
+      <Stack.Screen
+        name="goals"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
     </Stack>
   );
 }

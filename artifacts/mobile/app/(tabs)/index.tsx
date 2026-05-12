@@ -63,13 +63,55 @@ function MacroSummaryBar({
   );
 }
 
+function GoalsBanner() {
+  const colors = useColors();
+  const router = useRouter();
+  const { dailyGoals } = useScan();
+
+  function onPress() {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push("/goals");
+  }
+
+  return (
+    <TouchableOpacity
+      style={[styles.goalsBanner, { backgroundColor: colors.card, borderColor: colors.border }]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <View style={styles.goalsBannerLeft}>
+        <View style={[styles.goalsIconBox, { backgroundColor: colors.primary + "18" }]}>
+          <Feather name="target" size={16} color={colors.primary} />
+        </View>
+        <Text style={[styles.goalsBannerTitle, { color: colors.foreground }]}>Mis objetivos</Text>
+      </View>
+      <View style={styles.goalsPills}>
+        <GoalPill value={dailyGoals.calories} unit="kcal" color="#00D26A" />
+        <GoalPill value={dailyGoals.protein} unit="P" color="#4F8EF7" />
+        <GoalPill value={dailyGoals.carbs} unit="C" color="#F7B24F" />
+        <GoalPill value={dailyGoals.fat} unit="G" color="#F74F4F" />
+        <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function GoalPill({ value, unit, color }: { value: number; unit: string; color: string }) {
+  const colors = useColors();
+  return (
+    <View style={[styles.goalPill, { backgroundColor: color + "14" }]}>
+      <Text style={[styles.goalPillText, { color }]}>{value}</Text>
+      <Text style={[styles.goalPillUnit, { color: colors.mutedForeground }]}>{unit}</Text>
+    </View>
+  );
+}
+
 function MealSection({ meal }: { meal: MealType }) {
   const colors = useColors();
   const router = useRouter();
   const { getTodayByMeal, setPendingMealType } = useScan();
   const entries = getTodayByMeal(meal);
   const totalCal = entries.reduce((s, r) => s + r.nutrition.calories, 0);
-  const isDark = useColorScheme() === "dark";
 
   function onAdd() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -115,7 +157,7 @@ function MealSection({ meal }: { meal: MealType }) {
       {entries.length === 0 && (
         <TouchableOpacity style={styles.emptyRow} onPress={onAdd} activeOpacity={0.7}>
           <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-            Tap + to add food
+            Toca + para añadir un alimento
           </Text>
         </TouchableOpacity>
       )}
@@ -140,7 +182,7 @@ function MealEntry({ entry }: { entry: ScanRecord }) {
           {entry.nutrition.foodName}
         </Text>
         <Text style={[styles.entryMacros, { color: colors.mutedForeground }]}>
-          P {Math.round(entry.nutrition.protein)}g · C {Math.round(entry.nutrition.carbs)}g · F {Math.round(entry.nutrition.fat)}g
+          P {Math.round(entry.nutrition.protein)}g · C {Math.round(entry.nutrition.carbs)}g · G {Math.round(entry.nutrition.fat)}g
         </Text>
       </View>
       <Text style={[styles.entryCal, { color: colors.foreground }]}>
@@ -159,10 +201,10 @@ export default function HomeScreen() {
   const totals = getTodayTotals();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const dayNames = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+  const monthNames = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
   const now = new Date();
-  const dateLabel = `${dayNames[now.getDay()]}, ${monthNames[now.getMonth()]} ${now.getDate()}`;
+  const dateLabel = `${dayNames[now.getDay()]}, ${now.getDate()} ${monthNames[now.getMonth()]}`;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -174,15 +216,13 @@ export default function HomeScreen() {
       >
         <View style={[styles.header, { paddingTop: topPad + 16 }]}>
           <View>
-            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Today</Text>
+            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Hoy</Text>
             <Text style={[styles.dateLabel, { color: colors.foreground }]}>{dateLabel}</Text>
           </View>
-          <View style={[styles.goalBadge, { backgroundColor: colors.secondary }]}>
-            <Feather name="target" size={14} color={colors.primary} />
-            <Text style={[styles.goalText, { color: colors.foreground }]}>
-              {dailyGoals.calories} kcal goal
-            </Text>
-          </View>
+        </View>
+
+        <View style={{ paddingHorizontal: 16, paddingBottom: 4 }}>
+          <GoalsBanner />
         </View>
 
         <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.ringSection}>
@@ -194,21 +234,21 @@ export default function HomeScreen() {
 
           <View style={styles.macroRow}>
             <MacroSummaryBar
-              label="Protein"
+              label="Proteínas"
               value={totals.protein}
               goal={dailyGoals.protein}
               color={MACRO_COLORS.protein}
             />
             <View style={[styles.macroDivider, { backgroundColor: colors.border }]} />
             <MacroSummaryBar
-              label="Carbs"
+              label="Carbos"
               value={totals.carbs}
               goal={dailyGoals.carbs}
               color={MACRO_COLORS.carbs}
             />
             <View style={[styles.macroDivider, { backgroundColor: colors.border }]} />
             <MacroSummaryBar
-              label="Fat"
+              label="Grasas"
               value={totals.fat}
               goal={dailyGoals.fat}
               color={MACRO_COLORS.fat}
@@ -217,7 +257,7 @@ export default function HomeScreen() {
         </Animated.View>
 
         <View style={styles.mealsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Meals</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Comidas</Text>
           <View style={styles.mealsList}>
             {MEAL_ORDER.map((meal, i) => (
               <Animated.View key={meal} entering={FadeInDown.delay(150 + i * 60).springify()}>
@@ -232,15 +272,13 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
   greeting: {
     fontSize: 13,
@@ -254,18 +292,51 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     marginTop: 2,
   },
-  goalBadge: {
+  goalsBanner: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    marginTop: 4,
+    justifyContent: "space-between",
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
   },
-  goalText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
+  goalsBannerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  goalsIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  goalsBannerTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  goalsPills: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  goalPill: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 2,
+  },
+  goalPillText: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+  },
+  goalPillUnit: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
   },
   ringSection: {
     alignItems: "center",
@@ -321,9 +392,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     paddingHorizontal: 4,
   },
-  mealsList: {
-    gap: 10,
-  },
+  mealsList: { gap: 10 },
   mealCard: {
     borderRadius: 18,
     borderWidth: 1,
@@ -363,9 +432,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  entriesList: {
-    borderTopWidth: 1,
-  },
+  entriesList: { borderTopWidth: 1 },
   entryRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -378,10 +445,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 10,
   },
-  entryInfo: {
-    flex: 1,
-    gap: 3,
-  },
+  entryInfo: { flex: 1, gap: 3 },
   entryName: {
     fontSize: 14,
     fontFamily: "Inter_500Medium",

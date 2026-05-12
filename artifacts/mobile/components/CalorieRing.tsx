@@ -68,13 +68,13 @@ export function CalorieRing({ consumed, goal, size = 220 }: CalorieRingProps) {
         <Text style={[styles.consumed, { color: colors.foreground }]}>
           {Math.round(consumed)}
         </Text>
-        <Text style={[styles.unit, { color: colors.mutedForeground }]}>kcal eaten</Text>
+        <Text style={[styles.unit, { color: colors.mutedForeground }]}>kcal consumidas</Text>
         <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
         <Text style={[styles.remaining, { color: colors.primary }]}>
           {Math.round(remaining)}
         </Text>
         <Text style={[styles.remainingLabel, { color: colors.mutedForeground }]}>
-          remaining
+          restantes
         </Text>
       </View>
     </View>

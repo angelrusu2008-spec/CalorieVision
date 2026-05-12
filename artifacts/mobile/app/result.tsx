@@ -13,10 +13,7 @@ import {
   View,
   useColorScheme,
 } from "react-native";
-import Animated, {
-  FadeInDown,
-  FadeInUp,
-} from "react-native-reanimated";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MacroBar } from "@/components/MacroBar";
 import { useScan, MEAL_LABELS } from "@/context/ScanContext";
@@ -30,17 +27,13 @@ const FIBER_COLOR = "#4FF7B2";
 function ConfidenceBadge({ confidence }: { confidence: string }) {
   const colors = useColors();
   const color =
-    confidence === "high"
-      ? "#00D26A"
-      : confidence === "medium"
-        ? "#F7B24F"
-        : "#F74F4F";
+    confidence === "high" ? "#00D26A" : confidence === "medium" ? "#F7B24F" : "#F74F4F";
   const label =
     confidence === "high"
-      ? "High Accuracy"
+      ? "Alta precisión"
       : confidence === "medium"
-        ? "Medium Accuracy"
-        : "Low Accuracy";
+        ? "Precisión media"
+        : "Baja precisión";
 
   return (
     <View style={[styles.badge, { backgroundColor: color + "20" }]}>
@@ -67,7 +60,9 @@ export default function ResultScreen() {
   if (!record) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.foreground }]}>Scan not found</Text>
+        <Text style={[styles.errorText, { color: colors.foreground }]}>
+          Escaneo no encontrado
+        </Text>
       </View>
     );
   }
@@ -92,10 +87,7 @@ export default function ResultScreen() {
             style={styles.imageGradient}
           />
           <TouchableOpacity
-            style={[
-              styles.backButton,
-              { top: topPad + 12, backgroundColor: "rgba(0,0,0,0.4)" },
-            ]}
+            style={[styles.backButton, { top: topPad + 12, backgroundColor: "rgba(0,0,0,0.4)" }]}
             onPress={() => router.back()}
             activeOpacity={0.8}
           >
@@ -115,7 +107,12 @@ export default function ResultScreen() {
               <Text style={[styles.servingSize, { color: colors.mutedForeground }]}>
                 {nutrition.servingSize}
               </Text>
-              <View style={[styles.mealTypeBadge, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+              <View
+                style={[
+                  styles.mealTypeBadge,
+                  { backgroundColor: colors.secondary, borderColor: colors.border },
+                ]}
+              >
                 <Text style={[styles.mealTypeText, { color: colors.mutedForeground }]}>
                   {MEAL_LABELS[record.mealType ?? "snack"]}
                 </Text>
@@ -130,42 +127,53 @@ export default function ResultScreen() {
 
           <Animated.View
             entering={FadeInDown.delay(150).springify()}
-            style={[styles.calorieCard, { backgroundColor: isDark ? "#141414" : "#F5FAF7", borderColor: colors.primary + "30" }]}
+            style={[
+              styles.calorieCard,
+              {
+                backgroundColor: isDark ? "#141414" : "#F5FAF7",
+                borderColor: colors.primary + "30",
+              },
+            ]}
           >
             <Text style={[styles.calorieNumber, { color: colors.primary }]}>
               {Math.round(nutrition.calories)}
             </Text>
-            <Text style={[styles.calorieLabel, { color: colors.mutedForeground }]}>
-              kcal
-            </Text>
+            <Text style={[styles.calorieLabel, { color: colors.mutedForeground }]}>kcal</Text>
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Macronutrients</Text>
-            <View style={[styles.macroContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Macronutrientes
+            </Text>
+            <View
+              style={[
+                styles.macroContainer,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
               <MacroBar
-                label="Protein"
+                label="Proteínas"
                 value={nutrition.protein}
                 color={PROTEIN_COLOR}
                 maxValue={Math.max(totalMacros * 0.4, 1)}
               />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <MacroBar
-                label="Carbohydrates"
+                label="Carbohidratos"
                 value={nutrition.carbs}
                 color={CARBS_COLOR}
                 maxValue={Math.max(totalMacros * 0.6, 1)}
               />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <MacroBar
-                label="Fat"
+                label="Grasas"
                 value={nutrition.fat}
                 color={FAT_COLOR}
                 maxValue={Math.max(totalMacros * 0.4, 1)}
               />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <MacroBar
-                label="Fiber"
+                label="Fibra"
                 value={nutrition.fiber}
                 color={FIBER_COLOR}
                 maxValue={30}
@@ -174,22 +182,38 @@ export default function ResultScreen() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(250).springify()} style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Details</Text>
-            <View style={[styles.detailsGrid, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <DetailItem label="Sugar" value={`${nutrition.sugar.toFixed(1)}g`} colors={colors} />
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Detalles</Text>
+            <View
+              style={[
+                styles.detailsGrid,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <DetailItem
+                label="Azúcar"
+                value={`${nutrition.sugar.toFixed(1)}g`}
+                colors={colors}
+              />
               <View style={[styles.vDivider, { backgroundColor: colors.border }]} />
-              <DetailItem label="Sodium" value={`${Math.round(nutrition.sodium)}mg`} colors={colors} />
+              <DetailItem
+                label="Sodio"
+                value={`${Math.round(nutrition.sodium)}mg`}
+                colors={colors}
+              />
             </View>
           </Animated.View>
 
           {nutrition.ingredients && nutrition.ingredients.length > 0 && (
             <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Ingredients</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Ingredientes</Text>
               <View style={styles.ingredientsList}>
                 {nutrition.ingredients.slice(0, 8).map((ing, i) => (
                   <View
                     key={i}
-                    style={[styles.ingredientChip, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                    style={[
+                      styles.ingredientChip,
+                      { backgroundColor: colors.secondary, borderColor: colors.border },
+                    ]}
                   >
                     <Text style={[styles.ingredientText, { color: colors.foreground }]}>
                       {ing}
@@ -208,7 +232,7 @@ export default function ResultScreen() {
             >
               <Feather name="camera" size={18} color={colors.primaryForeground} />
               <Text style={[styles.scanAgainText, { color: colors.primaryForeground }]}>
-                Scan Another
+                Escanear otro
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -236,17 +260,9 @@ function DetailItem({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  imageContainer: {
-    height: 280,
-    position: "relative",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
+  container: { flex: 1 },
+  imageContainer: { height: 280, position: "relative" },
+  image: { width: "100%", height: "100%" },
   imageGradient: {
     position: "absolute",
     bottom: 0,
@@ -290,15 +306,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginTop: 4,
   },
-  badgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-  },
+  badgeDot: { width: 6, height: 6, borderRadius: 3 },
+  badgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -317,10 +326,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  mealTypeText: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-  },
+  mealTypeText: { fontSize: 11, fontFamily: "Inter_500Medium" },
   description: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
@@ -340,26 +346,16 @@ const styles = StyleSheet.create({
     letterSpacing: -2,
     lineHeight: 60,
   },
-  calorieLabel: {
-    fontSize: 16,
-    fontFamily: "Inter_500Medium",
-  },
-  section: {
-    gap: 10,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-  },
+  calorieLabel: { fontSize: 16, fontFamily: "Inter_500Medium" },
+  section: { gap: 10 },
+  sectionTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
   macroContainer: {
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
     gap: 14,
   },
-  divider: {
-    height: 1,
-  },
+  divider: { height: 1 },
   detailsGrid: {
     borderRadius: 16,
     borderWidth: 1,
@@ -371,33 +367,17 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     gap: 4,
   },
-  vDivider: {
-    width: 1,
-    marginVertical: 12,
-  },
-  detailLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  detailValue: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-  },
-  ingredientsList: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
+  vDivider: { width: 1, marginVertical: 12 },
+  detailLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  detailValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  ingredientsList: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   ingredientChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
   },
-  ingredientText: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
+  ingredientText: { fontSize: 13, fontFamily: "Inter_400Regular" },
   scanAgainButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -406,10 +386,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 16,
   },
-  scanAgainText: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
+  scanAgainText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   errorText: {
     fontSize: 16,
     fontFamily: "Inter_400Regular",
