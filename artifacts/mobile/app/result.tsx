@@ -115,13 +115,8 @@ export default function ResultScreen() {
   }, []);
 
   if (!record) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.foreground }]}>
-          Escaneo no encontrado
-        </Text>
-      </View>
-    );
+    router.back();
+    return null;
   }
 
   const { nutrition, imageUri } = record;

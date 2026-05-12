@@ -65,10 +65,9 @@ function MacroSummaryBar({
   );
 }
 
-function GoalsBanner() {
+function GoalsButton() {
   const colors = useColors();
   const router = useRouter();
-  const { dailyGoals } = useScan();
 
   function onPress() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -77,34 +76,13 @@ function GoalsBanner() {
 
   return (
     <TouchableOpacity
-      style={[styles.goalsBanner, { backgroundColor: colors.card, borderColor: colors.border }]}
+      style={[styles.goalsBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
       onPress={onPress}
-      activeOpacity={0.8}
+      activeOpacity={0.75}
     >
-      <View style={styles.goalsBannerLeft}>
-        <View style={[styles.goalsIconBox, { backgroundColor: colors.primary + "18" }]}>
-          <Feather name="target" size={16} color={colors.primary} />
-        </View>
-        <Text style={[styles.goalsBannerTitle, { color: colors.foreground }]}>Mis objetivos</Text>
-      </View>
-      <View style={styles.goalsPills}>
-        <GoalPill value={dailyGoals.calories} unit="kcal" color="#00D26A" />
-        <GoalPill value={dailyGoals.protein} unit="P" color="#4F8EF7" />
-        <GoalPill value={dailyGoals.carbs} unit="C" color="#F7B24F" />
-        <GoalPill value={dailyGoals.fat} unit="G" color="#F74F4F" />
-        <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
-      </View>
+      <Feather name="sliders" size={15} color={colors.primary} />
+      <Text style={[styles.goalsBtnText, { color: colors.foreground }]}>Objetivos</Text>
     </TouchableOpacity>
-  );
-}
-
-function GoalPill({ value, unit, color }: { value: number; unit: string; color: string }) {
-  const colors = useColors();
-  return (
-    <View style={[styles.goalPill, { backgroundColor: color + "14" }]}>
-      <Text style={[styles.goalPillText, { color }]}>{value}</Text>
-      <Text style={[styles.goalPillUnit, { color: colors.mutedForeground }]}>{unit}</Text>
-    </View>
   );
 }
 
@@ -252,10 +230,7 @@ export default function HomeScreen() {
             <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Hoy</Text>
             <Text style={[styles.dateLabel, { color: colors.foreground }]}>{dateLabel}</Text>
           </View>
-        </View>
-
-        <View style={{ paddingHorizontal: 16, paddingBottom: 4 }}>
-          <GoalsBanner />
+          <GoalsButton />
         </View>
 
         <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.ringSection}>
@@ -325,51 +300,18 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     marginTop: 2,
   },
-  goalsBanner: {
+  goalsBtn: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 14,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
     borderWidth: 1,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
   },
-  goalsBannerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  goalsIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  goalsBannerTitle: {
-    fontSize: 14,
+  goalsBtnText: {
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
-  },
-  goalsPills: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  goalPill: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
-    gap: 2,
-  },
-  goalPillText: {
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-  },
-  goalPillUnit: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
   },
   ringSection: {
     alignItems: "center",

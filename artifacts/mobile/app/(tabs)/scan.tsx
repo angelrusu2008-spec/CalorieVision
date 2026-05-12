@@ -37,16 +37,23 @@ const MEAL_ICONS: Record<MealType, React.ComponentProps<typeof Feather>["name"]>
   snack: "coffee",
 };
 
+type ScanState =
+  | { phase: "idle" }
+  | { phase: "preview"; uri: string; base64: string }
+  | { phase: "analyzing"; uri: string };
+
 export default function ScanScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { addScan, pendingMealType, setPendingMealType } = useScan();
   const isDark = useColorScheme() === "dark";
-  const [analyzing, setAnalyzing] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [scanState, setScanState] = useState<ScanState>({ phase: "idle" });
   const [selectedMeal, setSelectedMeal] = useState<MealType>(pendingMealType);
   const [hint, setHint] = useState("");
+
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const bottomPad = Platform.OS === "web" ? 34 + 84 : insets.bottom + 84;
 
   async function pickImage(fromCamera: boolean) {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -54,10 +61,7 @@ export default function ScanScreen() {
     if (fromCamera) {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
-          "Permiso necesario",
-          "Se necesita acceso a la cámara para escanear alimentos.",
-        );
+        Alert.alert("Permiso necesario", "Se necesita acceso a la cámara para escanear alimentos.");
         return;
       }
     }
@@ -79,19 +83,20 @@ export default function ScanScreen() {
         });
 
     if (result.canceled || !result.assets[0]) return;
-
     const asset = result.assets[0];
     if (!asset.base64) {
       Alert.alert("Error", "No se pudo procesar la imagen. Inténtalo de nuevo.");
       return;
     }
 
-    setSelectedImage(asset.uri);
-    await analyzeFood(asset.base64, asset.uri);
+    setScanState({ phase: "preview", uri: asset.uri, base64: asset.base64 });
   }
 
-  async function analyzeFood(base64: string, uri: string) {
-    setAnalyzing(true);
+  async function analyzeFood() {
+    if (scanState.phase !== "preview") return;
+    const { base64, uri } = scanState;
+
+    setScanState({ phase: "analyzing", uri });
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     try {
@@ -104,10 +109,8 @@ export default function ScanScreen() {
       });
 
       if (!response.ok) throw new Error("Failed to analyze image");
-
       const json = (await response.json()) as { success: boolean; data: NutritionData };
-
-      if (!json.success || !json.data) throw new Error("Invalid response from server");
+      if (!json.success || !json.data) throw new Error("Invalid response");
 
       const today = new Date().toISOString().split("T")[0] ?? "";
       const record: ScanRecord = {
@@ -123,42 +126,24 @@ export default function ScanScreen() {
       setPendingMealType(selectedMeal);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setHint("");
-
+      setScanState({ phase: "idle" });
       router.push({ pathname: "/result", params: { id: record.id } });
-    } catch (err) {
+    } catch {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        "Análisis fallido",
-        "No se pudo analizar la imagen. Prueba con una foto más clara del alimento.",
-      );
-    } finally {
-      setAnalyzing(false);
-      setSelectedImage(null);
+      setScanState({ phase: "idle" });
+      Alert.alert("Análisis fallido", "No se pudo analizar la imagen. Prueba con una foto más clara del alimento.");
     }
   }
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 + 84 : insets.bottom + 84;
-
-  if (analyzing) {
+  if (scanState.phase === "analyzing") {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.loadingContainer}>
-          {selectedImage && (
-            <Image
-              source={{ uri: selectedImage }}
-              style={styles.previewImage}
-              blurRadius={8}
-            />
-          )}
+          <Image source={{ uri: scanState.uri }} style={styles.previewImage} blurRadius={8} />
           <View
             style={[
               styles.loadingOverlay,
-              {
-                backgroundColor: isDark
-                  ? "rgba(0,0,0,0.75)"
-                  : "rgba(255,255,255,0.85)",
-              },
+              { backgroundColor: isDark ? "rgba(0,0,0,0.78)" : "rgba(255,255,255,0.88)" },
             ]}
           >
             <View style={[styles.scanRing, { borderColor: colors.primary }]}>
@@ -173,6 +158,134 @@ export default function ScanScreen() {
           </View>
         </View>
       </View>
+    );
+  }
+
+  if (scanState.phase === "preview") {
+    return (
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: bottomPad }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.header, { paddingTop: topPad + 16 }]}>
+            <TouchableOpacity
+              style={styles.backChip}
+              onPress={() => { setScanState({ phase: "idle" }); setHint(""); }}
+              activeOpacity={0.7}
+            >
+              <Feather name="arrow-left" size={18} color={colors.foreground} />
+            </TouchableOpacity>
+            <Text style={[styles.title, { color: colors.foreground }]}>Revisar imagen</Text>
+          </View>
+
+          <View style={styles.previewSection}>
+            <View style={styles.previewImageWrapper}>
+              <Image source={{ uri: scanState.uri }} style={styles.previewImg} resizeMode="cover" />
+              <TouchableOpacity
+                style={[styles.retakeBtn, { backgroundColor: "rgba(0,0,0,0.55)" }]}
+                onPress={() => { setScanState({ phase: "idle" }); setHint(""); }}
+                activeOpacity={0.85}
+              >
+                <Feather name="refresh-ccw" size={16} color="#fff" />
+                <Text style={styles.retakeBtnText}>Cambiar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.sectionBlock}>
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+              ¿Para qué comida?
+            </Text>
+            <View style={styles.mealRow}>
+              {MEAL_ORDER.map((meal) => {
+                const active = meal === selectedMeal;
+                return (
+                  <TouchableOpacity
+                    key={meal}
+                    style={[
+                      styles.mealChip,
+                      {
+                        backgroundColor: active ? colors.primary : colors.card,
+                        borderColor: active ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setSelectedMeal(meal);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <Feather
+                      name={MEAL_ICONS[meal]}
+                      size={13}
+                      color={active ? colors.primaryForeground : colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.mealChipText,
+                        { color: active ? colors.primaryForeground : colors.foreground },
+                      ]}
+                    >
+                      {MEAL_LABELS[meal]}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.sectionBlock}>
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+              Describe el alimento (opcional)
+            </Text>
+            <View
+              style={[
+                styles.hintInputWrapper,
+                { backgroundColor: colors.card, borderColor: hint.length > 0 ? colors.primary + "80" : colors.border },
+              ]}
+            >
+              <Feather name="edit-2" size={15} color={colors.mutedForeground} />
+              <TextInput
+                style={[styles.hintInput, { color: colors.foreground }]}
+                placeholder="Ej: 100g de pasta, un vaso de leche entera..."
+                placeholderTextColor={colors.mutedForeground}
+                value={hint}
+                onChangeText={setHint}
+                returnKeyType="done"
+                maxLength={150}
+                autoFocus={false}
+                multiline
+              />
+              {hint.length > 0 && (
+                <TouchableOpacity onPress={() => setHint("")} activeOpacity={0.7}>
+                  <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              )}
+            </View>
+            <Text style={[styles.hintHelp, { color: colors.mutedForeground }]}>
+              Indica la cantidad o nombre exacto para mayor precisión
+            </Text>
+          </View>
+
+          <View style={styles.analyzeRow}>
+            <TouchableOpacity
+              style={[styles.analyzeBtn, { backgroundColor: colors.primary }]}
+              onPress={analyzeFood}
+              activeOpacity={0.85}
+            >
+              <Feather name="zap" size={20} color={colors.primaryForeground} />
+              <Text style={[styles.analyzeBtnText, { color: colors.primaryForeground }]}>
+                Analizar con IA
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   }
 
@@ -193,7 +306,6 @@ export default function ScanScreen() {
           </Text>
         </View>
 
-        {/* Meal selector */}
         <View style={styles.sectionBlock}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
             ¿Para qué comida?
@@ -219,7 +331,7 @@ export default function ScanScreen() {
                 >
                   <Feather
                     name={MEAL_ICONS[meal]}
-                    size={14}
+                    size={13}
                     color={active ? colors.primaryForeground : colors.mutedForeground}
                   />
                   <Text
@@ -236,7 +348,6 @@ export default function ScanScreen() {
           </View>
         </View>
 
-        {/* Camera frame */}
         <View style={styles.cameraSection}>
           <TouchableOpacity
             style={[styles.cameraFrame, { borderColor: colors.border, backgroundColor: colors.card }]}
@@ -255,51 +366,23 @@ export default function ScanScreen() {
             <View style={[styles.cornerTR, { borderColor: colors.primary }]} />
             <View style={[styles.cornerBL, { borderColor: colors.primary }]} />
             <View style={[styles.cornerBR, { borderColor: colors.primary }]} />
-            <View style={[styles.cameraCircle, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
+            <View
+              style={[
+                styles.cameraCircle,
+                { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" },
+              ]}
+            >
               <Feather name="camera" size={36} color={colors.primary} />
             </View>
             <Text style={[styles.heroLabel, { color: colors.foreground }]}>
               Toca para fotografiar
             </Text>
             <Text style={[styles.heroSub, { color: colors.mutedForeground }]}>
-              o usa la galería abajo
+              Primero elige la comida, luego saca la foto
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Hint input */}
-        <View style={styles.sectionBlock}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-            Describe el alimento (opcional)
-          </Text>
-          <View
-            style={[
-              styles.hintInputWrapper,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <Feather name="edit-2" size={15} color={colors.mutedForeground} />
-            <TextInput
-              style={[styles.hintInput, { color: colors.foreground }]}
-              placeholder="Ej: 100g de pasta, un vaso de leche entera..."
-              placeholderTextColor={colors.mutedForeground}
-              value={hint}
-              onChangeText={setHint}
-              returnKeyType="done"
-              maxLength={120}
-            />
-            {hint.length > 0 && (
-              <TouchableOpacity onPress={() => setHint("")} activeOpacity={0.7}>
-                <Feather name="x-circle" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            )}
-          </View>
-          <Text style={[styles.hintHelp, { color: colors.mutedForeground }]}>
-            Escríbelo antes de sacar la foto — la IA lo usará para ajustar los valores
-          </Text>
-        </View>
-
-        {/* Buttons */}
         <View style={styles.buttonsRow}>
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
@@ -312,14 +395,15 @@ export default function ScanScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.secondaryBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={[
+              styles.secondaryBtn,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
             onPress={() => pickImage(false)}
             activeOpacity={0.85}
           >
             <Feather name="image" size={20} color={colors.foreground} />
-            <Text style={[styles.secondaryBtnText, { color: colors.foreground }]}>
-              Galería
-            </Text>
+            <Text style={[styles.secondaryBtnText, { color: colors.foreground }]}>Galería</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -330,9 +414,18 @@ export default function ScanScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingBottom: 8,
     gap: 4,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  backChip: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 4,
   },
   title: {
     fontSize: 26,
@@ -342,6 +435,8 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
+    paddingHorizontal: 24,
+    paddingBottom: 4,
   },
   sectionBlock: {
     paddingHorizontal: 20,
@@ -363,8 +458,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 22,
     borderWidth: 1.5,
   },
@@ -375,7 +470,7 @@ const styles = StyleSheet.create({
   cameraSection: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    height: 220,
+    height: 210,
   },
   cameraFrame: {
     flex: 1,
@@ -386,50 +481,14 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     gap: 10,
   },
-  cornerTL: {
-    position: "absolute",
-    top: 14,
-    left: 14,
-    width: 24,
-    height: 24,
-    borderTopWidth: 2.5,
-    borderLeftWidth: 2.5,
-    borderRadius: 4,
-  },
-  cornerTR: {
-    position: "absolute",
-    top: 14,
-    right: 14,
-    width: 24,
-    height: 24,
-    borderTopWidth: 2.5,
-    borderRightWidth: 2.5,
-    borderRadius: 4,
-  },
-  cornerBL: {
-    position: "absolute",
-    bottom: 14,
-    left: 14,
-    width: 24,
-    height: 24,
-    borderBottomWidth: 2.5,
-    borderLeftWidth: 2.5,
-    borderRadius: 4,
-  },
-  cornerBR: {
-    position: "absolute",
-    bottom: 14,
-    right: 14,
-    width: 24,
-    height: 24,
-    borderBottomWidth: 2.5,
-    borderRightWidth: 2.5,
-    borderRadius: 4,
-  },
+  cornerTL: { position: "absolute", top: 14, left: 14, width: 24, height: 24, borderTopWidth: 2.5, borderLeftWidth: 2.5, borderRadius: 4 },
+  cornerTR: { position: "absolute", top: 14, right: 14, width: 24, height: 24, borderTopWidth: 2.5, borderRightWidth: 2.5, borderRadius: 4 },
+  cornerBL: { position: "absolute", bottom: 14, left: 14, width: 24, height: 24, borderBottomWidth: 2.5, borderLeftWidth: 2.5, borderRadius: 4 },
+  cornerBR: { position: "absolute", bottom: 14, right: 14, width: 24, height: 24, borderBottomWidth: 2.5, borderRightWidth: 2.5, borderRadius: 4 },
   cameraCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
@@ -441,13 +500,45 @@ const styles = StyleSheet.create({
   heroSub: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    paddingHorizontal: 20,
+  },
+  previewSection: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  previewImageWrapper: {
+    height: 220,
+    borderRadius: 20,
+    overflow: "hidden",
+    position: "relative",
+  },
+  previewImg: {
+    width: "100%",
+    height: "100%",
+  },
+  retakeBtn: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  retakeBtnText: {
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
   },
   hintInputWrapper: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 10,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
@@ -456,6 +547,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     padding: 0,
+    minHeight: 40,
   },
   hintHelp: {
     fontSize: 12,
@@ -494,6 +586,23 @@ const styles = StyleSheet.create({
   secondaryBtnText: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
+  },
+  analyzeRow: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  analyzeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 16,
+    borderRadius: 16,
+  },
+  analyzeBtnText: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.2,
   },
   loadingContainer: { flex: 1 },
   previewImage: {

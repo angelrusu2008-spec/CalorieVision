@@ -15,7 +15,7 @@ router.post("/analyze-food", async (req, res) => {
     const dataUrl = image.startsWith("data:") ? image : `data:image/jpeg;base64,${image}`;
 
     const hintClause = hint?.trim()
-      ? `\nEl usuario dice: "${hint.trim()}". Usa esta información para identificar el alimento con mayor precisión (por ejemplo, si dice "100g de pasta", ajusta los valores nutricionales a esa cantidad exacta).`
+      ? `\nInformación adicional del usuario: "${hint.trim()}". IMPORTANTE: usa esto para ajustar los valores nutricionales exactamente (si dice 100g de pasta, calcula para 100g, no para una ración estándar).`
       : "";
 
     const response = await openai.chat.completions.create({
@@ -27,13 +27,19 @@ router.post("/analyze-food", async (req, res) => {
           content: [
             {
               type: "text",
-              text: `Analiza esta imagen de alimento y devuelve un objeto JSON con la información nutricional. Sé preciso y realista.${hintClause}
+              text: `Eres un nutricionista experto. Analiza esta imagen de alimento y devuelve información nutricional en JSON.
 
-Responde SOLO con JSON válido (sin markdown, sin explicaciones) en este formato exacto:
+REGLAS IMPORTANTES:
+- Responde SIEMPRE en español (nombres de alimentos, descripción, ingredientes, razón de salud)
+- Sé preciso y realista con los valores nutricionales
+- Si hay información adicional del usuario, úsala para mejorar la precisión
+${hintClause}
+
+Devuelve ÚNICAMENTE JSON válido (sin markdown, sin texto adicional) con este formato exacto:
 {
-  "foodName": "Nombre del alimento o plato en español",
-  "description": "Descripción breve de lo que ves (1-2 frases, en español)",
-  "servingSize": "Tamaño estimado de la porción (ej: '1 plato ~350g')",
+  "foodName": "Nombre del alimento en español",
+  "description": "Descripción breve en español (1-2 frases)",
+  "servingSize": "Tamaño de la porción en español (ej: '1 plato ~350g')",
   "calories": 450,
   "protein": 28.5,
   "carbs": 42.0,
@@ -42,12 +48,12 @@ Responde SOLO con JSON válido (sin markdown, sin explicaciones) en este formato
   "sugar": 8.0,
   "sodium": 620,
   "confidence": "high",
-  "ingredients": ["ingrediente1", "ingrediente2", "ingrediente3"],
+  "ingredients": ["ingrediente1 en español", "ingrediente2 en español"],
   "healthScore": 7,
-  "healthReason": "Breve explicación del índice de salud en español (1 frase)"
+  "healthReason": "Motivo del índice de salud en español (1 frase)"
 }
 
-Macros en gramos, calorías en kcal, sodio en mg. Confidence: "high", "medium" o "low". healthScore del 1 al 10 (1=muy poco saludable, 10=muy saludable). Si no puedes identificar comida en la imagen, devuelve confidence "low" con valores estimados de 0.`,
+Unidades: macros en gramos, calorías en kcal, sodio en mg. confidence: "high", "medium" o "low". healthScore del 1 al 10 (1=muy poco saludable, 10=muy saludable). Si no identificas comida, usa confidence "low" y valores 0.`,
             },
             {
               type: "image_url",
