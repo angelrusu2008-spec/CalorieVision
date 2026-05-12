@@ -270,7 +270,7 @@ export default function ScanScreen() {
         {/* Hint input */}
         <View style={styles.sectionBlock}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-            ¿Qué es? (opcional)
+            Describe el alimento (opcional)
           </Text>
           <View
             style={[
@@ -281,7 +281,7 @@ export default function ScanScreen() {
             <Feather name="edit-2" size={15} color={colors.mutedForeground} />
             <TextInput
               style={[styles.hintInput, { color: colors.foreground }]}
-              placeholder="Ej: paella valenciana, tortilla de patatas..."
+              placeholder="Ej: 100g de pasta, un vaso de leche entera..."
               placeholderTextColor={colors.mutedForeground}
               value={hint}
               onChangeText={setHint}
@@ -295,7 +295,7 @@ export default function ScanScreen() {
             )}
           </View>
           <Text style={[styles.hintHelp, { color: colors.mutedForeground }]}>
-            Añadir una descripción ayuda a la IA a identificar mejor el alimento
+            Escríbelo antes de sacar la foto — la IA lo usará para ajustar los valores
           </Text>
         </View>
 

@@ -29,6 +29,8 @@ export interface NutritionData {
   sodium: number;
   confidence: "high" | "medium" | "low";
   ingredients: string[];
+  healthScore: number;
+  healthReason: string;
 }
 
 export interface ScanRecord {

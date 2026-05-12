@@ -43,6 +43,63 @@ function ConfidenceBadge({ confidence }: { confidence: string }) {
   );
 }
 
+function HealthScoreCard({ score, reason }: { score: number; reason?: string }) {
+  const colors = useColors();
+  const safe = Math.max(1, Math.min(10, Math.round(score) || 5));
+
+  const color =
+    safe <= 3 ? "#F74F4F" : safe <= 5 ? "#F7B24F" : safe <= 7 ? "#A8D86E" : "#00D26A";
+
+  const label =
+    safe <= 3
+      ? "Poco saludable"
+      : safe <= 5
+        ? "Moderado"
+        : safe <= 7
+          ? "Bastante saludable"
+          : "Muy saludable";
+
+  return (
+    <View style={[styles.healthCard, { backgroundColor: color + "12", borderColor: color + "35" }]}>
+      <View style={styles.healthTop}>
+        <View>
+          <Text style={[styles.healthTitle, { color: colors.foreground }]}>
+            Índice de salud
+          </Text>
+          <Text style={[styles.healthLabel, { color }]}>{label}</Text>
+        </View>
+        <View style={[styles.healthScoreCircle, { borderColor: color, backgroundColor: color + "18" }]}>
+          <Text style={[styles.healthScoreNum, { color }]}>{safe}</Text>
+          <Text style={[styles.healthScoreDen, { color: colors.mutedForeground }]}>/10</Text>
+        </View>
+      </View>
+
+      <View style={[styles.healthTrack, { backgroundColor: colors.border }]}>
+        {Array.from({ length: 10 }).map((_, i) => {
+          const filled = i < safe;
+          const segColor = i < 3 ? "#F74F4F" : i < 5 ? "#F7B24F" : i < 7 ? "#A8D86E" : "#00D26A";
+          return (
+            <View
+              key={i}
+              style={[
+                styles.healthSegment,
+                {
+                  backgroundColor: filled ? segColor : colors.border,
+                  opacity: filled ? 1 : 0.35,
+                },
+              ]}
+            />
+          );
+        })}
+      </View>
+
+      {!!reason && (
+        <Text style={[styles.healthReason, { color: colors.mutedForeground }]}>{reason}</Text>
+      )}
+    </View>
+  );
+}
+
 export default function ResultScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -139,6 +196,13 @@ export default function ResultScreen() {
               {Math.round(nutrition.calories)}
             </Text>
             <Text style={[styles.calorieLabel, { color: colors.mutedForeground }]}>kcal</Text>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(175).springify()}>
+            <HealthScoreCard
+              score={nutrition.healthScore ?? 5}
+              reason={nutrition.healthReason}
+            />
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
@@ -347,6 +411,62 @@ const styles = StyleSheet.create({
     lineHeight: 60,
   },
   calorieLabel: { fontSize: 16, fontFamily: "Inter_500Medium" },
+  healthCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+  },
+  healthTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  healthTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+  },
+  healthLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    marginTop: 2,
+  },
+  healthScoreCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 1,
+  },
+  healthScoreNum: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
+  },
+  healthScoreDen: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 4,
+  },
+  healthTrack: {
+    flexDirection: "row",
+    gap: 4,
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  healthSegment: {
+    flex: 1,
+    borderRadius: 2,
+  },
+  healthReason: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+  },
   section: { gap: 10 },
   sectionTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
   macroContainer: {

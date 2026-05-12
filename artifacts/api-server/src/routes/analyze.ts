@@ -15,25 +15,25 @@ router.post("/analyze-food", async (req, res) => {
     const dataUrl = image.startsWith("data:") ? image : `data:image/jpeg;base64,${image}`;
 
     const hintClause = hint?.trim()
-      ? `\nThe user says: "${hint.trim()}". Use this to help identify the food more accurately.`
+      ? `\nEl usuario dice: "${hint.trim()}". Usa esta información para identificar el alimento con mayor precisión (por ejemplo, si dice "100g de pasta", ajusta los valores nutricionales a esa cantidad exacta).`
       : "";
 
     const response = await openai.chat.completions.create({
       model: "gpt-5.2",
-      max_completion_tokens: 1024,
+      max_completion_tokens: 1200,
       messages: [
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: `Analyze this food image and return a JSON object with nutritional information. Be precise and realistic.${hintClause}
-              
-Return ONLY valid JSON (no markdown, no explanation) in this exact format:
+              text: `Analiza esta imagen de alimento y devuelve un objeto JSON con la información nutricional. Sé preciso y realista.${hintClause}
+
+Responde SOLO con JSON válido (sin markdown, sin explicaciones) en este formato exacto:
 {
-  "foodName": "Name of the food/dish",
-  "description": "Brief description of what you see (1-2 sentences)",
-  "servingSize": "Estimated serving size (e.g. '1 plate ~350g')",
+  "foodName": "Nombre del alimento o plato en español",
+  "description": "Descripción breve de lo que ves (1-2 frases, en español)",
+  "servingSize": "Tamaño estimado de la porción (ej: '1 plato ~350g')",
   "calories": 450,
   "protein": 28.5,
   "carbs": 42.0,
@@ -42,10 +42,12 @@ Return ONLY valid JSON (no markdown, no explanation) in this exact format:
   "sugar": 8.0,
   "sodium": 620,
   "confidence": "high",
-  "ingredients": ["ingredient1", "ingredient2", "ingredient3"]
+  "ingredients": ["ingrediente1", "ingrediente2", "ingrediente3"],
+  "healthScore": 7,
+  "healthReason": "Breve explicación del índice de salud en español (1 frase)"
 }
 
-All macros in grams, calories as kcal, sodium in mg. Confidence: "high", "medium", or "low". If you cannot identify food in the image, return confidence "low" with estimated values of 0.`,
+Macros en gramos, calorías en kcal, sodio en mg. Confidence: "high", "medium" o "low". healthScore del 1 al 10 (1=muy poco saludable, 10=muy saludable). Si no puedes identificar comida en la imagen, devuelve confidence "low" con valores estimados de 0.`,
             },
             {
               type: "image_url",
