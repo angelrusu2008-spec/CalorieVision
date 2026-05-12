@@ -59,6 +59,7 @@ export interface DailyTotals {
 interface ScanContextType {
   history: ScanRecord[];
   addScan: (record: ScanRecord) => void;
+  deleteScan: (id: string) => void;
   clearHistory: () => void;
   isLoading: boolean;
   dailyGoals: DailyGoals;
@@ -122,6 +123,14 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const deleteScan = useCallback((id: string) => {
+    setHistory((prev) => {
+      const next = prev.filter((r) => r.id !== id);
+      void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const clearHistory = useCallback(() => {
     setHistory([]);
     void AsyncStorage.removeItem(STORAGE_KEY);
@@ -165,6 +174,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
       value={{
         history,
         addScan,
+        deleteScan,
         clearHistory,
         isLoading,
         dailyGoals,

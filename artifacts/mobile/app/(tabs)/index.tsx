@@ -3,8 +3,9 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useRef } from "react";
 import {
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -13,6 +14,7 @@ import {
   View,
   useColorScheme,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -168,28 +170,59 @@ function MealSection({ meal }: { meal: MealType }) {
 function MealEntry({ entry }: { entry: ScanRecord }) {
   const colors = useColors();
   const router = useRouter();
+  const { deleteScan } = useScan();
+  const swipeRef = useRef<Swipeable>(null);
 
   function onPress() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({ pathname: "/result", params: { id: entry.id } });
   }
 
+  function onDelete() {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    swipeRef.current?.close();
+    Alert.alert("Eliminar alimento", "¿Quieres eliminar este registro?", [
+      { text: "Cancelar", style: "cancel", onPress: () => swipeRef.current?.close() },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: () => deleteScan(entry.id),
+      },
+    ]);
+  }
+
+  function renderRightActions() {
+    return (
+      <TouchableOpacity style={styles.deleteAction} onPress={onDelete} activeOpacity={0.85}>
+        <Feather name="trash-2" size={20} color="#fff" />
+        <Text style={styles.deleteActionText}>Borrar</Text>
+      </TouchableOpacity>
+    );
+  }
+
   return (
-    <TouchableOpacity style={styles.entryRow} onPress={onPress} activeOpacity={0.75}>
-      <Image source={{ uri: entry.imageUri }} style={styles.entryThumb} contentFit="cover" />
-      <View style={styles.entryInfo}>
-        <Text style={[styles.entryName, { color: colors.foreground }]} numberOfLines={1}>
-          {entry.nutrition.foodName}
+    <Swipeable
+      ref={swipeRef}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      friction={2}
+    >
+      <TouchableOpacity style={[styles.entryRow, { backgroundColor: colors.card }]} onPress={onPress} activeOpacity={0.75}>
+        <Image source={{ uri: entry.imageUri }} style={styles.entryThumb} contentFit="cover" />
+        <View style={styles.entryInfo}>
+          <Text style={[styles.entryName, { color: colors.foreground }]} numberOfLines={1}>
+            {entry.nutrition.foodName}
+          </Text>
+          <Text style={[styles.entryMacros, { color: colors.mutedForeground }]}>
+            P {Math.round(entry.nutrition.protein)}g · C {Math.round(entry.nutrition.carbs)}g · G {Math.round(entry.nutrition.fat)}g
+          </Text>
+        </View>
+        <Text style={[styles.entryCal, { color: colors.foreground }]}>
+          {Math.round(entry.nutrition.calories)}
+          <Text style={[styles.entryCalUnit, { color: colors.mutedForeground }]}> kcal</Text>
         </Text>
-        <Text style={[styles.entryMacros, { color: colors.mutedForeground }]}>
-          P {Math.round(entry.nutrition.protein)}g · C {Math.round(entry.nutrition.carbs)}g · G {Math.round(entry.nutrition.fat)}g
-        </Text>
-      </View>
-      <Text style={[styles.entryCal, { color: colors.foreground }]}>
-        {Math.round(entry.nutrition.calories)}
-        <Text style={[styles.entryCalUnit, { color: colors.mutedForeground }]}> kcal</Text>
-      </Text>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Swipeable>
   );
 }
 
@@ -469,5 +502,17 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+  },
+  deleteAction: {
+    backgroundColor: "#F74F4F",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    gap: 4,
+  },
+  deleteActionText: {
+    color: "#fff",
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
   },
 });

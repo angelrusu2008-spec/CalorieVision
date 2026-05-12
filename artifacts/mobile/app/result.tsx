@@ -106,7 +106,7 @@ export default function ResultScreen() {
   const router = useRouter();
   const isDark = useColorScheme() === "dark";
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { history } = useScan();
+  const { history, deleteScan } = useScan();
 
   const record = history.find((r) => r.id === id);
 
@@ -288,7 +288,7 @@ export default function ResultScreen() {
             </Animated.View>
           )}
 
-          <Animated.View entering={FadeInDown.delay(350).springify()}>
+          <Animated.View entering={FadeInDown.delay(350).springify()} style={styles.bottomButtons}>
             <TouchableOpacity
               style={[styles.scanAgainButton, { backgroundColor: colors.primary }]}
               onPress={() => router.back()}
@@ -298,6 +298,30 @@ export default function ResultScreen() {
               <Text style={[styles.scanAgainText, { color: colors.primaryForeground }]}>
                 Escanear otro
               </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.deleteButton, { backgroundColor: colors.card, borderColor: colors.destructive + "50" }]}
+              onPress={() => {
+                Alert.alert(
+                  "Eliminar alimento",
+                  "¿Quieres eliminar este registro?",
+                  [
+                    { text: "Cancelar", style: "cancel" },
+                    {
+                      text: "Eliminar",
+                      style: "destructive",
+                      onPress: () => {
+                        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                        deleteScan(record.id);
+                        router.back();
+                      },
+                    },
+                  ],
+                );
+              }}
+              activeOpacity={0.8}
+            >
+              <Feather name="trash-2" size={18} color={colors.destructive} />
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -498,7 +522,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   ingredientText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  bottomButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
   scanAgainButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -507,6 +536,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   scanAgainText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  deleteButton: {
+    width: 54,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    borderWidth: 1.5,
+  },
   errorText: {
     fontSize: 16,
     fontFamily: "Inter_400Regular",
