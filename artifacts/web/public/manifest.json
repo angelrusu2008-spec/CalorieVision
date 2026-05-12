@@ -1,0 +1,15 @@
+{
+  "name": "CalorieScan AI",
+  "short_name": "CalorieScan",
+  "description": "Escanea tus alimentos con IA y obtén calorías, macros y puntuación de salud.",
+  "start_url": "/web/",
+  "scope": "/web/",
+  "display": "standalone",
+  "background_color": "#F7F7F5",
+  "theme_color": "#00D26A",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
