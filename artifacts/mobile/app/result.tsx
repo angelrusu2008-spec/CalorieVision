@@ -19,7 +19,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MacroBar } from "@/components/MacroBar";
-import { useScan } from "@/context/ScanContext";
+import { useScan, MEAL_LABELS } from "@/context/ScanContext";
 import { useColors } from "@/hooks/useColors";
 
 const PROTEIN_COLOR = "#4F8EF7";
@@ -111,9 +111,16 @@ export default function ResultScreen() {
               </Text>
               <ConfidenceBadge confidence={nutrition.confidence} />
             </View>
-            <Text style={[styles.servingSize, { color: colors.mutedForeground }]}>
-              {nutrition.servingSize}
-            </Text>
+            <View style={styles.metaRow}>
+              <Text style={[styles.servingSize, { color: colors.mutedForeground }]}>
+                {nutrition.servingSize}
+              </Text>
+              <View style={[styles.mealTypeBadge, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                <Text style={[styles.mealTypeText, { color: colors.mutedForeground }]}>
+                  {MEAL_LABELS[record.mealType ?? "snack"]}
+                </Text>
+              </View>
+            </View>
             {nutrition.description ? (
               <Text style={[styles.description, { color: colors.mutedForeground }]}>
                 {nutrition.description}
@@ -292,10 +299,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
   },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
+    gap: 8,
+  },
   servingSize: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    marginTop: 4,
+    flex: 1,
+  },
+  mealTypeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  mealTypeText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
   },
   description: {
     fontSize: 14,

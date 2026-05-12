@@ -1,223 +1,232 @@
+import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as ImagePicker from "expo-image-picker";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   useColorScheme,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { Feather } from "@expo/vector-icons";
-import { useScan, type NutritionData, type ScanRecord } from "@/context/ScanContext";
-import { useColors } from "@/hooks/useColors";
-import { setBaseUrl } from "@workspace/api-client-react";
 
-if (process.env.EXPO_PUBLIC_DOMAIN) {
-  setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+import { CalorieRing } from "@/components/CalorieRing";
+import { useScan, type MealType, type ScanRecord, MEAL_LABELS } from "@/context/ScanContext";
+import { useColors } from "@/hooks/useColors";
+
+const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
+
+const MEAL_ICONS: Record<MealType, React.ComponentProps<typeof Feather>["name"]> = {
+  breakfast: "sun",
+  lunch: "cloud",
+  dinner: "moon",
+  snack: "coffee",
+};
+
+const MACRO_COLORS = {
+  protein: "#4F8EF7",
+  carbs: "#F7B24F",
+  fat: "#F74F4F",
+};
+
+function MacroSummaryBar({
+  label,
+  value,
+  goal,
+  color,
+}: {
+  label: string;
+  value: number;
+  goal: number;
+  color: string;
+}) {
+  const colors = useColors();
+  const pct = goal > 0 ? Math.min(value / goal, 1) : 0;
+
+  return (
+    <View style={styles.macroCol}>
+      <Text style={[styles.macroValue, { color: colors.foreground }]}>
+        {Math.round(value)}
+        <Text style={[styles.macroUnit, { color: colors.mutedForeground }]}>g</Text>
+      </Text>
+      <View style={[styles.macroTrack, { backgroundColor: colors.border }]}>
+        <View style={[styles.macroFill, { backgroundColor: color, width: `${pct * 100}%` }]} />
+      </View>
+      <Text style={[styles.macroLabel, { color: colors.mutedForeground }]}>{label}</Text>
+    </View>
+  );
 }
 
-export default function ScanScreen() {
+function MealSection({ meal }: { meal: MealType }) {
+  const colors = useColors();
+  const router = useRouter();
+  const { getTodayByMeal, setPendingMealType } = useScan();
+  const entries = getTodayByMeal(meal);
+  const totalCal = entries.reduce((s, r) => s + r.nutrition.calories, 0);
+  const isDark = useColorScheme() === "dark";
+
+  function onAdd() {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setPendingMealType(meal);
+    router.push("/(tabs)/scan");
+  }
+
+  return (
+    <View style={[styles.mealCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.mealHeader}>
+        <View style={styles.mealTitleRow}>
+          <View style={[styles.mealIconBox, { backgroundColor: colors.secondary }]}>
+            <Feather name={MEAL_ICONS[meal]} size={16} color={colors.primary} />
+          </View>
+          <View>
+            <Text style={[styles.mealName, { color: colors.foreground }]}>
+              {MEAL_LABELS[meal]}
+            </Text>
+            {entries.length > 0 && (
+              <Text style={[styles.mealCalTotal, { color: colors.mutedForeground }]}>
+                {Math.round(totalCal)} kcal
+              </Text>
+            )}
+          </View>
+        </View>
+        <TouchableOpacity
+          style={[styles.addBtn, { backgroundColor: colors.primary }]}
+          onPress={onAdd}
+          activeOpacity={0.8}
+        >
+          <Feather name="plus" size={16} color={colors.primaryForeground} />
+        </TouchableOpacity>
+      </View>
+
+      {entries.length > 0 && (
+        <View style={[styles.entriesList, { borderTopColor: colors.border }]}>
+          {entries.map((entry) => (
+            <MealEntry key={entry.id} entry={entry} />
+          ))}
+        </View>
+      )}
+
+      {entries.length === 0 && (
+        <TouchableOpacity style={styles.emptyRow} onPress={onAdd} activeOpacity={0.7}>
+          <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+            Tap + to add food
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+function MealEntry({ entry }: { entry: ScanRecord }) {
+  const colors = useColors();
+  const router = useRouter();
+
+  function onPress() {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({ pathname: "/result", params: { id: entry.id } });
+  }
+
+  return (
+    <TouchableOpacity style={styles.entryRow} onPress={onPress} activeOpacity={0.75}>
+      <Image source={{ uri: entry.imageUri }} style={styles.entryThumb} contentFit="cover" />
+      <View style={styles.entryInfo}>
+        <Text style={[styles.entryName, { color: colors.foreground }]} numberOfLines={1}>
+          {entry.nutrition.foodName}
+        </Text>
+        <Text style={[styles.entryMacros, { color: colors.mutedForeground }]}>
+          P {Math.round(entry.nutrition.protein)}g · C {Math.round(entry.nutrition.carbs)}g · F {Math.round(entry.nutrition.fat)}g
+        </Text>
+      </View>
+      <Text style={[styles.entryCal, { color: colors.foreground }]}>
+        {Math.round(entry.nutrition.calories)}
+        <Text style={[styles.entryCalUnit, { color: colors.mutedForeground }]}> kcal</Text>
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { addScan } = useScan();
   const isDark = useColorScheme() === "dark";
-  const [analyzing, setAnalyzing] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
-  async function pickImage(fromCamera: boolean) {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    if (fromCamera) {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert("Permission needed", "Camera access is required to scan food.");
-        return;
-      }
-    }
-
-    const result = fromCamera
-      ? await ImagePicker.launchCameraAsync({
-          mediaTypes: "images",
-          quality: 0.7,
-          base64: true,
-          allowsEditing: true,
-          aspect: [4, 3],
-        })
-      : await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: "images",
-          quality: 0.7,
-          base64: true,
-          allowsEditing: true,
-          aspect: [4, 3],
-        });
-
-    if (result.canceled || !result.assets[0]) return;
-
-    const asset = result.assets[0];
-    if (!asset.base64) {
-      Alert.alert("Error", "Could not process image. Please try again.");
-      return;
-    }
-
-    setSelectedImage(asset.uri);
-    await analyzeFood(asset.base64, asset.uri);
-  }
-
-  async function analyzeFood(base64: string, uri: string) {
-    setAnalyzing(true);
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN;
-      const baseUrl = domain ? `https://${domain}` : "";
-      const response = await fetch(`${baseUrl}/api/analyze-food`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: base64 }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to analyze image");
-      }
-
-      const json = (await response.json()) as { success: boolean; data: NutritionData };
-
-      if (!json.success || !json.data) {
-        throw new Error("Invalid response from server");
-      }
-
-      const record: ScanRecord = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        imageUri: uri,
-        scannedAt: new Date().toISOString(),
-        nutrition: json.data,
-      };
-
-      addScan(record);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      router.push({
-        pathname: "/result",
-        params: { id: record.id },
-      });
-    } catch (err) {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        "Analysis failed",
-        "Could not analyze the image. Please try again with a clearer photo of food.",
-      );
-    } finally {
-      setAnalyzing(false);
-      setSelectedImage(null);
-    }
-  }
-
+  const { getTodayTotals, dailyGoals } = useScan();
+  const totals = getTodayTotals();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const now = new Date();
+  const dateLabel = `${dayNames[now.getDay()]}, ${monthNames[now.getMonth()]} ${now.getDate()}`;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {analyzing ? (
-        <View style={styles.loadingContainer}>
-          {selectedImage && (
-            <Image
-              source={{ uri: selectedImage }}
-              style={styles.previewImage}
-              blurRadius={8}
-            />
-          )}
-          <View
-            style={[styles.loadingOverlay, { backgroundColor: isDark ? "rgba(0,0,0,0.75)" : "rgba(255,255,255,0.85)" }]}
-          >
-            <View style={[styles.scanRing, { borderColor: colors.primary }]}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-            <Text style={[styles.analyzingTitle, { color: colors.foreground }]}>
-              Analyzing food...
-            </Text>
-            <Text style={[styles.analyzingSubtitle, { color: colors.mutedForeground }]}>
-              Calculating calories & macros
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingBottom: Platform.OS === "web" ? 34 + 84 + 16 : insets.bottom + 100,
+        }}
+      >
+        <View style={[styles.header, { paddingTop: topPad + 16 }]}>
+          <View>
+            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Today</Text>
+            <Text style={[styles.dateLabel, { color: colors.foreground }]}>{dateLabel}</Text>
+          </View>
+          <View style={[styles.goalBadge, { backgroundColor: colors.secondary }]}>
+            <Feather name="target" size={14} color={colors.primary} />
+            <Text style={[styles.goalText, { color: colors.foreground }]}>
+              {dailyGoals.calories} kcal goal
             </Text>
           </View>
         </View>
-      ) : (
-        <>
-          <View style={[styles.header, { paddingTop: topPad + 16 }]}>
-            <Text style={[styles.appName, { color: colors.foreground }]}>CalorieScan</Text>
-            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-              <Text style={[styles.badgeText, { color: colors.primaryForeground }]}>AI</Text>
-            </View>
+
+        <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.ringSection}>
+          <LinearGradient
+            colors={isDark ? ["rgba(0,210,106,0.06)", "transparent"] : ["rgba(0,210,106,0.04)", "transparent"]}
+            style={StyleSheet.absoluteFill}
+          />
+          <CalorieRing consumed={totals.calories} goal={dailyGoals.calories} />
+
+          <View style={styles.macroRow}>
+            <MacroSummaryBar
+              label="Protein"
+              value={totals.protein}
+              goal={dailyGoals.protein}
+              color={MACRO_COLORS.protein}
+            />
+            <View style={[styles.macroDivider, { backgroundColor: colors.border }]} />
+            <MacroSummaryBar
+              label="Carbs"
+              value={totals.carbs}
+              goal={dailyGoals.carbs}
+              color={MACRO_COLORS.carbs}
+            />
+            <View style={[styles.macroDivider, { backgroundColor: colors.border }]} />
+            <MacroSummaryBar
+              label="Fat"
+              value={totals.fat}
+              goal={dailyGoals.fat}
+              color={MACRO_COLORS.fat}
+            />
           </View>
+        </Animated.View>
 
-          <View style={styles.heroArea}>
-            <View style={[styles.cameraFrame, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              <LinearGradient
-                colors={
-                  isDark
-                    ? ["rgba(0,210,106,0.08)", "rgba(0,210,106,0.02)"]
-                    : ["rgba(0,210,106,0.06)", "rgba(0,210,106,0.01)"]
-                }
-                style={StyleSheet.absoluteFill}
-              />
-              <View style={[styles.cornerTL, { borderColor: colors.primary }]} />
-              <View style={[styles.cornerTR, { borderColor: colors.primary }]} />
-              <View style={[styles.cornerBL, { borderColor: colors.primary }]} />
-              <View style={[styles.cornerBR, { borderColor: colors.primary }]} />
-              <Feather name="camera-off" size={48} color={colors.mutedForeground} />
-              <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>
-                Point at any food to scan
-              </Text>
-            </View>
+        <View style={styles.mealsSection}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Meals</Text>
+          <View style={styles.mealsList}>
+            {MEAL_ORDER.map((meal, i) => (
+              <Animated.View key={meal} entering={FadeInDown.delay(150 + i * 60).springify()}>
+                <MealSection meal={meal} />
+              </Animated.View>
+            ))}
           </View>
-
-          <View
-            style={[
-              styles.actions,
-              {
-                paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 100,
-              },
-            ]}
-          >
-            <TouchableOpacity
-              style={[styles.scanButton, { backgroundColor: colors.primary }]}
-              onPress={() => pickImage(true)}
-              activeOpacity={0.85}
-            >
-              <Feather name="camera" size={26} color={colors.primaryForeground} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.galleryButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => pickImage(false)}
-              activeOpacity={0.85}
-            >
-              <Feather name="image" size={20} color={colors.foreground} />
-            </TouchableOpacity>
-
-            <View style={styles.actionLabels}>
-              <Text style={[styles.scanLabel, { color: colors.foreground }]}>Take Photo</Text>
-              <Text style={[styles.galleryLabel, { color: colors.mutedForeground }]}>Gallery</Text>
-            </View>
-          </View>
-
-          <View style={[styles.tipRow, { bottom: Platform.OS === "web" ? 34 + 84 + 80 : insets.bottom + 180 }]}>
-            <View style={[styles.tipPill, { backgroundColor: colors.secondary }]}>
-              <Feather name="zap" size={12} color={colors.primary} />
-              <Text style={[styles.tipText, { color: colors.mutedForeground }]}>
-                Instant AI analysis in seconds
-              </Text>
-            </View>
-          </View>
-        </>
-      )}
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -228,179 +237,173 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    gap: 8,
-  },
-  appName: {
-    fontSize: 24,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.5,
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.5,
-  },
-  heroArea: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 16,
-  },
-  cameraFrame: {
-    flex: 1,
-    borderRadius: 24,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    gap: 12,
-  },
-  cornerTL: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    width: 28,
-    height: 28,
-    borderTopWidth: 2.5,
-    borderLeftWidth: 2.5,
-    borderRadius: 4,
-  },
-  cornerTR: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    width: 28,
-    height: 28,
-    borderTopWidth: 2.5,
-    borderRightWidth: 2.5,
-    borderRadius: 4,
-  },
-  cornerBL: {
-    position: "absolute",
-    bottom: 16,
-    left: 16,
-    width: 28,
-    height: 28,
-    borderBottomWidth: 2.5,
-    borderLeftWidth: 2.5,
-    borderRadius: 4,
-  },
-  cornerBR: {
-    position: "absolute",
-    bottom: 16,
-    right: 16,
-    width: 28,
-    height: 28,
-    borderBottomWidth: 2.5,
-    borderRightWidth: 2.5,
-    borderRadius: 4,
-  },
-  heroLabel: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-  },
-  actions: {
-    paddingHorizontal: 24,
-    alignItems: "center",
-    gap: 0,
-  },
-  actionLabels: {
-    flexDirection: "row",
-    width: "100%",
-    marginTop: 12,
-    gap: 0,
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    paddingHorizontal: 4,
+    paddingHorizontal: 20,
+    paddingBottom: 8,
   },
-  scanLabel: {
+  greeting: {
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    flex: 1,
-    textAlign: "center",
-    marginLeft: -48,
+    fontFamily: "Inter_500Medium",
+    textTransform: "uppercase",
+    letterSpacing: 1,
   },
-  galleryLabel: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    width: 64,
-    textAlign: "center",
+  dateLabel: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.3,
+    marginTop: 2,
   },
-  scanButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#00D26A",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  galleryButton: {
-    position: "absolute",
-    right: 24,
-    bottom: 0,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-  },
-  tipRow: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    alignItems: "center",
-  },
-  tipPill: {
+  goalBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 20,
+    marginTop: 4,
   },
-  tipText: {
+  goalText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  ringSection: {
+    alignItems: "center",
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    gap: 24,
+    overflow: "hidden",
+  },
+  macroRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 8,
+  },
+  macroCol: {
+    flex: 1,
+    alignItems: "center",
+    gap: 6,
+  },
+  macroValue: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
+  },
+  macroUnit: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  macroTrack: {
+    width: "80%",
+    height: 5,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  macroFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  macroLabel: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
   },
-  loadingContainer: {
+  macroDivider: {
+    width: 1,
+    height: 40,
+  },
+  mealsSection: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    paddingHorizontal: 4,
+  },
+  mealsList: {
+    gap: 10,
+  },
+  mealCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  mealHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+  },
+  mealTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  mealIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mealName: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  mealCalTotal: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+  addBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  entriesList: {
+    borderTopWidth: 1,
+  },
+  entryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  entryThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+  },
+  entryInfo: {
     flex: 1,
+    gap: 3,
   },
-  previewImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: "100%",
-    height: "100%",
+  entryName: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
   },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
+  entryMacros: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
   },
-  scanRing: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 3,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  analyzingTitle: {
-    fontSize: 20,
+  entryCal: {
+    fontSize: 14,
     fontFamily: "Inter_700Bold",
   },
-  analyzingSubtitle: {
-    fontSize: 14,
+  entryCalUnit: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
+  emptyRow: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+  },
+  emptyText: {
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
   },
 });
