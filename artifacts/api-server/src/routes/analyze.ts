@@ -5,7 +5,7 @@ const router = Router();
 
 router.post("/analyze-food", async (req, res) => {
   try {
-    const { image } = req.body as { image?: string };
+    const { image, hint } = req.body as { image?: string; hint?: string };
 
     if (!image) {
       res.status(400).json({ error: "image is required (base64 string)" });
@@ -13,6 +13,10 @@ router.post("/analyze-food", async (req, res) => {
     }
 
     const dataUrl = image.startsWith("data:") ? image : `data:image/jpeg;base64,${image}`;
+
+    const hintClause = hint?.trim()
+      ? `\nThe user says: "${hint.trim()}". Use this to help identify the food more accurately.`
+      : "";
 
     const response = await openai.chat.completions.create({
       model: "gpt-5.2",
@@ -23,7 +27,7 @@ router.post("/analyze-food", async (req, res) => {
           content: [
             {
               type: "text",
-              text: `Analyze this food image and return a JSON object with nutritional information. Be precise and realistic.
+              text: `Analyze this food image and return a JSON object with nutritional information. Be precise and realistic.${hintClause}
               
 Return ONLY valid JSON (no markdown, no explanation) in this exact format:
 {
